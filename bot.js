@@ -34,9 +34,31 @@ class Bot {
 
         if (config.DEBUG) this.log("Starting ", cmd.join(' '));
 
+        let stderr_buffer = "";
         this.proc.stderr.on('data', (data) => {
             if (this.ignore)  return;
-            this.error("stderr: " + data);
+            //this.error("stderr: " + data);
+            stderr_buffer += data.toString();
+            
+            if (!stderr_buffer || stderr_buffer[stderr_buffer.length-1] !== '\n') {
+                //this.log("Partial result received, buffering until the errput ends with a newline");
+                return;
+            }
+            
+            let lines = stderr_buffer.split("\n");
+            stderr_buffer = "";
+            for (let i=0; i < lines.length; ++i) {
+                let line = lines[i];
+                if (line.trim() === "") {
+                    continue;
+                }
+                this.error("stderr: " + line);
+                if(line.startsWith("CHAT:")) {
+                    line = line.slice(5);
+                    this.game.sendChat(line, this.game.state.moves.length, "malkovich");
+                }                
+            }
+            
         });
         let stdout_buffer = "";
         this.proc.stdout.on('data', (data) => {
